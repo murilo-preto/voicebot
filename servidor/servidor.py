@@ -1,13 +1,8 @@
 import socket
 import select
-import speech_recognition as sr
-import pyaudio
 from gtts import gTTS
 import os
-from playsound import playsound
 import aiml
-from timeit import default_timer as timer
-from datetime import timedelta
 
 # Iniciar constantes
 SERVER_HOST = "localhost"
