@@ -25,12 +25,12 @@ def receive_txt(client_socket):  # Receber texto, cliente que o envia como argum
 
 
 def send_txt(client_socket, txt):
-    msg = f"{len(txt):<{HEADER_LEN}}" + txt
+    msg = f"{len(txt)+10:<{HEADER_LEN}}" + txt
     client_socket.send(msg.encode())
 
 
 def send_txt_indexed(client_socket, texto):
-    infoArquivo = f"texto{SEPARADOR}{len(texto)}"
+    infoArquivo = f"texto{SEPARADOR}{len(texto)+10}"
     send_txt(client_socket, infoArquivo)
     send_txt(client_socket, texto)
 
@@ -92,7 +92,10 @@ while True:
                 name = texto
                 said = "ROBOTSTART " + name
                 response = ai.respond(said)
+
+                send_txt_indexed(notified_socket, response)
                 send_audio_response(client_socket=notified_socket, response=response)
+
                 while texto != "Até logo":
                     infoArquivo = receive_txt(notified_socket)
                     texto = process_txt(infoArquivo)
@@ -102,6 +105,7 @@ while True:
                         except:
                             response = "Desculpe, mas não consegui captar o que você disse..."
 
+                        send_txt_indexed(notified_socket, response)
                         send_audio_response(notified_socket, response)
 
     for notified_socket in x_list:

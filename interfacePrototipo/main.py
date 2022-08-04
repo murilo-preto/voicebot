@@ -5,6 +5,9 @@ import threading
 import speech_recognition as sr
 from playsound import playsound
 import os
+import textwrap
+
+
 
 # Iniciar constantes
 SERVER_IP = "localhost"
@@ -29,16 +32,20 @@ def start_protocol():
     if begin_loop:
         update_label_txt(mainLabel, "Iniciando main loop")
         resposta_usuario = "Murilo"
+        send_txt_indexado(resposta_usuario)  # Enviar o que foi ouvido ao servidor
         while True:
             if resposta_usuario != False:
-                send_txt_indexado(resposta_usuario)  # Enviar o que foi ouvido ao servidor
-
                 infoArquivo = receive_txt(client_socket)  # Receber resposta do servidor
                 if infoArquivo != False:
                     tipoArquivo, tamanhoArquivo = infoArquivo.split(SEPARADOR)
                     tamanhoArquivo = int(tamanhoArquivo)
 
-                    if tipoArquivo == "audio":
+                    if tipoArquivo == "texto":
+                        texto = receive_txt(client_socket)  # Receber texto
+                        texto = wrap_txt(texto)
+                        update_label_txt(mainLabel, texto)
+
+                    elif tipoArquivo == "audio":
                         with open(NOME_ARQUIVO, "wb") as f:  # Baixar audio encapsulado
                             bytesLidos = client_socket.recv(tamanhoArquivo)
                             f.write(bytesLidos)
@@ -47,11 +54,9 @@ def start_protocol():
                         print("Audio reproduzido")
                         os.remove(NOME_ARQUIVO)
 
-                    elif tipoArquivo == "texto":
-                        texto = receive_txt(client_socket)  # Receber texto
-                        print(texto)
-
-            resposta_usuario = voice2txt()  # Ouvir usuario
+                        #resposta_usuario = voice2txt()  # Ouvir usuario
+                        resposta_usuario = "sim"
+                        send_txt_indexado(resposta_usuario)
 
 
 def send_txt(txt):
@@ -103,6 +108,16 @@ def voice2txt():
             return said
     except:
         return False
+
+
+def wrap_txt(txt):
+    aux_str = ""
+    print(txt)
+    newstr = textwrap.wrap(text=txt, width=40)
+    print(newstr)
+    for i in newstr:
+        aux_str += i + ' \n'
+    return aux_str
 
 
 # Variáveis
