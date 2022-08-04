@@ -4,7 +4,7 @@ import socket
 import threading
 
 # Iniciar constantes
-SERVER_IP = "192.168.0.11"
+SERVER_IP = "localhost"
 SERVER_PORT = 5001
 SEPARADOR = "<SEPARATOR>"  # Separador de texto auxiliar
 TAMANHO_BUFFER = 4096  # Qtd de bytes a serem enviados por scan

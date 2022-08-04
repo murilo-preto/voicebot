@@ -2,7 +2,7 @@ import socket
 import select
 
 # Iniciar constantes
-SERVER_HOST = "192.168.0.11"
+SERVER_HOST = "localhost"
 SERVER_PORT = 5001
 SEPARADOR = "<SEPARATOR>"  # Separador de texto auxiliar
 TAMANHO_BUFFER = 4096  # Qtd de bytes a serem recebidos por scan
