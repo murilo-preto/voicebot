@@ -1,5 +1,13 @@
 import socket
 import select
+import speech_recognition as sr
+import pyaudio
+from gtts import gTTS
+import os
+from playsound import playsound
+import aiml
+from timeit import default_timer as timer
+from datetime import timedelta
 
 # Iniciar constantes
 SERVER_HOST = "localhost"
@@ -11,7 +19,7 @@ HEADER_LEN = 10  # Tamanho header da msg
 
 
 # Funcoes
-def recebertxt(client_socket):  # Receber texto, cliente que o envia como argumento
+def receive_txt(client_socket):  # Receber texto, cliente que o envia como argumento
     try:
         tamanhotxt = client_socket.recv(HEADER_LEN).decode()
         tamanhotxt = int(tamanhotxt.strip())
@@ -20,6 +28,50 @@ def recebertxt(client_socket):  # Receber texto, cliente que o envia como argume
     except:
         return False
 
+
+def send_txt(client_socket, txt):
+    msg = f"{len(txt):<{HEADER_LEN}}" + txt
+    client_socket.send(msg.encode())
+
+
+def send_txt_indexed(client_socket, texto):
+    infoArquivo = f"texto{SEPARADOR}{len(texto)}"
+    send_txt(client_socket, infoArquivo)
+    send_txt(client_socket, texto)
+
+
+def send_audio_response(client_socket, response):
+    tts = gTTS(text=response, lang='pt-br')
+    filename = f'tempname.mp3'
+    tts.save(filename)
+    send_audio_indexed(client_socket, filename)
+    os.remove(filename)
+
+
+def send_audio_indexed(client_socket, caminhoAudio):
+    infoArquivo = f"audio{SEPARADOR}{os.path.getsize(caminhoAudio)}"
+    send_txt(client_socket, infoArquivo)
+
+    with open(caminhoAudio, "rb") as f:
+        bytesLidos = f.read(os.path.getsize(caminhoAudio))  # Ler Bytes
+        client_socket.send(bytesLidos)  # Enviar Bytes lidos
+
+
+def process_txt(texto):
+    if texto is False:  # recebertxt retornou falso: cliente fechou conexao
+        lista_soquetes.remove(notified_socket)
+        return False
+    else:  # indice recebido valido
+        tipoArquivo, tamanhoArquivo = texto.split(SEPARADOR)
+
+        if tipoArquivo == "texto":
+            texto = receive_txt(notified_socket)  # Receber texto
+            return texto
+
+
+# Init
+ai = aiml.Kernel()  # inicialização
+ai.learn('voicebot2.xml')  # lê o arquivo principal da AIML e faz referências aos outros
 
 server_socket = socket.socket()
 server_socket.bind((SERVER_HOST, SERVER_PORT))
@@ -39,29 +91,23 @@ while True:
             lista_soquetes.append(notified_socket)
         else:  # Nao ha conexoes novas pendentes
             print("[+] Recebendo dados:", notified_socket)
-            infoArquivo = recebertxt(notified_socket)
+            infoArquivo = receive_txt(notified_socket)
+            texto = process_txt(infoArquivo)
+            if texto != False:
+                name = texto
+                said = "ROBOTSTART " + name
+                response = ai.respond(said)
+                send_audio_response(client_socket=notified_socket, response=response)
+                while texto != "Até logo":
+                    infoArquivo = receive_txt(notified_socket)
+                    texto = process_txt(infoArquivo)
+                    if texto != False:
+                        try:
+                            response = ai.respond(texto)
+                        except:
+                            response = "Desculpe, mas não consegui captar o que você disse..."
 
-            if infoArquivo is False:  # recebertxt retornou falso: cliente fechou conexao
-                lista_soquetes.remove(notified_socket)
-            else:  # indice recebido valido
-                tipoArquivo, tamanhoArquivo = infoArquivo.split(SEPARADOR)
-                tamanhoArquivo = int(tamanhoArquivo)
-
-                if tipoArquivo == "audio":
-                    with open(NOME_ARQUIVO, "wb") as f:  # Baixar audio encapsulado
-                        while True:
-                            bytesLidos = notified_socket.recv(TAMANHO_BUFFER)
-                            if not bytesLidos:
-                                break
-                            f.write(bytesLidos)
-                    # audio baixado como "audio.mp3"
-                    # pendente: transcrever audio baixado em texto
-
-                elif tipoArquivo == "texto":
-                    texto = recebertxt(notified_socket)  # Receber texto
-                    print(texto)
-
-                # Processar texto, guardar info, enviar resposta ao soquete
+                        send_audio_response(notified_socket, response)
 
     for notified_socket in x_list:
         lista_soquetes.remove(notified_socket)
