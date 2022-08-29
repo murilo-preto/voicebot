@@ -3,6 +3,9 @@ import select
 from gtts import gTTS
 import os
 import aiml
+import bcrypt
+import pandas as pd
+import os.path
 
 
 # Iniciar constantes
@@ -110,11 +113,28 @@ while True:
 
                 clientPassword = receive_txt(notified_socket)
                 clientPassword = process_txt(clientPassword)
+                clientPassword = clientPassword.encode()
 
-                if clientUser == "user" and clientPassword == "0000":
-                    send_txt(notified_socket, "True")
-                    correctPassword = True
+                if os.path.exists("userData.csv"):
+                    df = pd.read_csv("userData.csv")
+
+                    lst = df.to_dict()
+                    userDict = lst['ID']
+                    hashDict = lst['HASHED_PASSWORD']
+
+                    for key in userDict:
+                        if userDict[key] == clientUser:
+                            hashPassword = hashDict[key]
+                            hashPassword = hashPassword[2:(len(hashPassword) - 1)]
+                            hashPassword = hashPassword.encode()
+
+                            if bcrypt.checkpw(clientPassword, hashPassword):
+                                send_txt(notified_socket, "True")
+                                correctPassword = True
+                            else:
+                                send_txt(notified_socket, "False")
                 else:
+                    print("Arquivo CSV contendo senhas não encontrado")
                     send_txt(notified_socket, "False")
 
             clientWeight = int(receive_txt(notified_socket))
