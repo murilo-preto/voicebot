@@ -11,7 +11,7 @@ import textwrap
 
 # Constantes
 SERVER_IP = "localhost"
-SERVER_PORT = 5002
+SERVER_PORT = 5005
 SEPARADOR = "<SEPARATOR>"  # Separador de texto auxiliar
 TAMANHO_BUFFER = 4096  # Qtd de bytes a serem enviados por scan
 NOME_ARQUIVO = "audio.mp3"  # Nome do arquivo a ser enviado
@@ -109,7 +109,7 @@ class socketPage(tk.Frame):  # Página inicial
         def connect2server():
             socketTitle["text"] = "Tentando conectar ao servidor,\naguarde um momento."
             try:
-                #client_socket.connect((SERVER_IP, SERVER_PORT))  # Conectar ao servidor
+                client_socket.connect((SERVER_IP, SERVER_PORT))  # Conectar ao servidor
                 socketTitle["text"] = "Conexão bem sucedida,\niniciando consulta."
                 controller.show_frame(loginPage)
             except ConnectionRefusedError:
@@ -131,15 +131,29 @@ class loginPage(tk.Frame):  # Página inicial
         tk.Frame.__init__(self, parent)
 
         def validateLogin():
-            if len(passwordEntry.get()) != 0:
-                controller.show_frame(insertInfoPage)
+            if (len(passwordEntry.get()) != 0 and len(userEntry.get()) != 0):
+                send_txt_indexado(userEntry.get())
+                send_txt_indexado(passwordEntry.get())
 
-        title = ttk.Label(self,
+                loginStatus = receive_txt(client_socket)
+                print(loginStatus)
+
+                if loginStatus == "True":
+                    loginStatus = True
+                else:
+                    loginStatus = False
+
+                if loginStatus:
+                    controller.show_frame(insertInfoPage)
+                else:
+                    loginTitle['text'] = "Acesso negado.\nConfira os dados digitados."
+
+        loginTitle = ttk.Label(self,
                           text='Digite suas credenciais\nnos campos indicados abaixo:',
                           font=LARGE_FONT,
                           justify=tk.CENTER)
 
-        title.pack(expand=True, padx=(10, 10), pady=(0, 0))
+        loginTitle.pack(expand=True, padx=(10, 10), pady=(0, 0))
 
         ttk.Label(self, text="Usuário:", font=MAIN_FONT).pack()
         userEntry = ttk.Entry(self, width=40)
@@ -159,10 +173,20 @@ class insertInfoPage(tk.Frame):
 
         def validateInfo():
             if len(weightEntry.get()) != 0:
-                if weightEntry.get() == "1":
+                send_txt(weightEntry.get())
+                anamneseStatus = receive_txt(client_socket)
+                print(anamneseStatus)
+
+                if anamneseStatus == "True":
+                    anamneseStatus = True
+                else:
+                    anamneseStatus = False
+
+                if anamneseStatus:
                     controller.show_frame(anamnesePage)
                 else:
                     controller.show_frame(endingPage)
+
 
         title = ttk.Label(self,
                           text='Preencha os campos abaixo:',
@@ -184,6 +208,7 @@ class anamnesePage(tk.Frame):
         tk.Frame.__init__(self, parent)
 
         def anamnese():
+            anamneseButton['state'] = tk.DISABLED
             resposta_usuario = "Murilo"
             send_txt_indexado(resposta_usuario)  # Enviar o que foi ouvido ao servidor
             while True:
@@ -207,24 +232,37 @@ class anamnesePage(tk.Frame):
                             print("Audio reproduzido")
                             os.remove(NOME_ARQUIVO)
 
-                            while resposta_usuario != False:
-                                resposta_usuario = voice2txt()  # Ouvir usuario
-
-                            # resposta_usuario = "sim"
+                            if False:
+                                while resposta_usuario != False:
+                                    resposta_usuario = voice2txt()  # Ouvir usuario
+                            else:
+                                resposta_usuario = "sim"
 
                             send_txt_indexado(resposta_usuario)
 
         anamneseTitle = ttk.Label(self,
-                          text='Alerta ganho de peso -> Anamnese',
+                          text='Por favor,\naperte o botão abaixo para consultarmos mais algumas informações',
                           font=LARGE_FONT,
                           justify=tk.CENTER)
 
         anamneseTitle.pack(expand=True, padx=(10, 10), pady=(0, 0))
 
+        anamneseThreading = lambda: threading.Thread(target=anamnese).start()
+
+        anamneseButton = ttk.Button(self, text="Continuar", command= anamneseThreading, width=20)
+        anamneseButton.pack(padx=(10, 10), pady=(10, 30))
+
+
+
 
 class endingPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+
+        def endprotocol(self):
+            None
+            #client_socket.close()
+            #self.destroy()
 
         title = ttk.Label(self,
                           text='Dados salvos com sucesso,\naté breve.',
@@ -232,6 +270,9 @@ class endingPage(tk.Frame):
                           justify=tk.CENTER)
 
         title.pack(expand=True, padx=(10, 10), pady=(0, 0))
+
+        self.after(3000, lambda: endprotocol(self))
+
 
 
 app = voicebotClass()

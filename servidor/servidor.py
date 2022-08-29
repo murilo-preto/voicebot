@@ -4,16 +4,26 @@ from gtts import gTTS
 import os
 import aiml
 
+
 # Iniciar constantes
 SERVER_HOST = "localhost"
-SERVER_PORT = 5001
+SERVER_PORT = 5005
 SEPARADOR = "<SEPARATOR>"  # Separador de texto auxiliar
 TAMANHO_BUFFER = 4096  # Qtd de bytes a serem recebidos por scan
 NOME_ARQUIVO = "audio.mp3"  # Nome do arquivo de audio
+NOME_LOG = "log.txt"
 HEADER_LEN = 10  # Tamanho header da msg
 
 
 # Funcoes
+def writelog (logpath=NOME_LOG, text=""):
+    with open(logpath, 'a') as f:
+        f.write(text)
+        f.write('\n')
+
+    print(text)
+
+
 def receive_txt(client_socket):  # Receber texto, cliente que o envia como argumento
     try:
         tamanhotxt = client_socket.recv(HEADER_LEN).decode()
@@ -33,6 +43,8 @@ def send_txt_indexed(client_socket, texto):
     infoArquivo = f"texto{SEPARADOR}{len(texto)+10}"
     send_txt(client_socket, infoArquivo)
     send_txt(client_socket, texto)
+
+    writelog(text=f"texto enviado: {texto}")
 
 
 def send_audio_response(client_socket, response):
@@ -54,13 +66,13 @@ def send_audio_indexed(client_socket, caminhoAudio):
 
 def process_txt(texto):
     if texto is False:  # recebertxt retornou falso: cliente fechou conexao
-        lista_soquetes.remove(notified_socket)
         return False
     else:  # indice recebido valido
         tipoArquivo, tamanhoArquivo = texto.split(SEPARADOR)
 
         if tipoArquivo == "texto":
             texto = receive_txt(notified_socket)  # Receber texto
+            writelog(text=f"texto recebido: {texto}")
             return texto
 
 
@@ -68,7 +80,11 @@ def process_txt(texto):
 ai = aiml.Kernel()  # inicialização
 ai.learn('voicebot2.xml')  # lê o arquivo principal da AIML e faz referências aos outros
 
-server_socket = socket.socket()
+with open("log.txt", 'w') as f:  # limpa o log de texto
+    f.write("")
+
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.bind((SERVER_HOST, SERVER_PORT))
 
 lista_soquetes = [server_socket]  # Lista de todos soquetes conectados
@@ -86,27 +102,54 @@ while True:
             lista_soquetes.append(notified_socket)
         else:  # Nao ha conexoes novas pendentes
             print("[+] Recebendo dados:", notified_socket)
-            infoArquivo = receive_txt(notified_socket)
-            texto = process_txt(infoArquivo)
-            if texto != False:
-                name = texto
-                said = "ROBOTSTART " + name
-                response = ai.respond(said)
 
-                send_txt_indexed(notified_socket, response)
-                send_audio_response(client_socket=notified_socket, response=response)
+            correctPassword = False
+            while not correctPassword:
+                clientUser = receive_txt(notified_socket)
+                clientUser = process_txt(clientUser)
 
-                while texto != "Até logo":
-                    infoArquivo = receive_txt(notified_socket)
-                    texto = process_txt(infoArquivo)
-                    if texto != False:
-                        try:
-                            response = ai.respond(texto)
-                        except:
-                            response = "Desculpe, mas não consegui captar o que você disse..."
+                clientPassword = receive_txt(notified_socket)
+                clientPassword = process_txt(clientPassword)
 
-                        send_txt_indexed(notified_socket, response)
-                        send_audio_response(notified_socket, response)
+                if clientUser == "user" and clientPassword == "0000":
+                    send_txt(notified_socket, "True")
+                    correctPassword = True
+                else:
+                    send_txt(notified_socket, "False")
 
-    for notified_socket in x_list:
-        lista_soquetes.remove(notified_socket)
+            clientWeight = int(receive_txt(notified_socket))
+            print(clientWeight)
+
+            anamnese = False
+
+            if clientWeight == 1:
+                send_txt(notified_socket, "True")
+                anamnese = True
+            else:
+                send_txt(notified_socket, "False")
+
+            if anamnese:
+                infoArquivo = receive_txt(notified_socket)
+                texto = process_txt(infoArquivo)
+                if texto != False:
+                    name = texto
+                    said = "ROBOTSTART " + name
+                    response = ai.respond(said)
+
+                    send_txt_indexed(notified_socket, response)
+                    send_audio_response(client_socket=notified_socket, response=response)
+
+                    while texto != "Até logo":
+                        infoArquivo = receive_txt(notified_socket)
+                        texto = process_txt(infoArquivo)
+                        if texto != False:
+                            try:
+                                response = ai.respond(texto)
+                            except:
+                                response = "Desculpe, mas não consegui captar o que você disse..."
+
+                            send_txt_indexed(notified_socket, response)
+                            send_audio_response(notified_socket, response)
+
+            lista_soquetes.remove(notified_socket)
+            notified_socket.close()
