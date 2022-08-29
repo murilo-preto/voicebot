@@ -69,6 +69,9 @@ def wrap_txt(txt):
 r = sr.Recognizer()
 client_socket = socket.socket()
 
+if os.path.exists(NOME_ARQUIVO):
+    os.remove(NOME_ARQUIVO)
+
 
 #### GUI ####
 LARGE_FONT = ('Times New Roman', 20)  # Fonte para títulos
@@ -132,8 +135,8 @@ class loginPage(tk.Frame):  # Página inicial
 
         def validateLogin():
             if (len(passwordEntry.get()) != 0 and len(userEntry.get()) != 0):
-                send_txt_indexado(userEntry.get())
-                send_txt_indexado(passwordEntry.get())
+                send_txt(userEntry.get())
+                send_txt(passwordEntry.get())
 
                 loginStatus = receive_txt(client_socket)
                 print(loginStatus)
@@ -163,8 +166,10 @@ class loginPage(tk.Frame):  # Página inicial
         passwordEntry = ttk.Entry(self, show='*', width=40)
         passwordEntry.pack(pady=(0, 100))
 
-        sendLogin = ttk.Button(self, text="Validar dados", command=lambda: validateLogin(), width=20)
+        sendLogin = ttk.Button(self, text="Validar dados", command=lambda: loginThreading(), width=20)
         sendLogin.pack(padx=(0, 10), pady=(10, 30))
+
+        loginThreading = lambda: threading.Thread(target=validateLogin).start()
 
 
 class insertInfoPage(tk.Frame):
@@ -241,7 +246,7 @@ class anamnesePage(tk.Frame):
                             send_txt_indexado(resposta_usuario)
 
         anamneseTitle = ttk.Label(self,
-                          text='Por favor,\naperte o botão abaixo para consultarmos mais algumas informações',
+                          text='Por favor, aperte o botão abaixo\npara consultarmos mais algumas informações',
                           font=LARGE_FONT,
                           justify=tk.CENTER)
 

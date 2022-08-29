@@ -109,32 +109,49 @@ while True:
             correctPassword = False
             while not correctPassword:
                 clientUser = receive_txt(notified_socket)
-                clientUser = process_txt(clientUser)
-
                 clientPassword = receive_txt(notified_socket)
-                clientPassword = process_txt(clientPassword)
-                clientPassword = clientPassword.encode()
 
-                if os.path.exists("userData.csv"):
-                    df = pd.read_csv("userData.csv")
+                print(f"user = {clientUser}")
+                print(f"password = {clientPassword}")
 
-                    lst = df.to_dict()
-                    userDict = lst['ID']
-                    hashDict = lst['HASHED_PASSWORD']
+                if clientUser != False and clientPassword != False:
+                    clientPassword = clientPassword.encode()
 
-                    for key in userDict:
-                        if userDict[key] == clientUser:
-                            hashPassword = hashDict[key]
-                            hashPassword = hashPassword[2:(len(hashPassword) - 1)]
-                            hashPassword = hashPassword.encode()
+                    if os.path.exists("userData.csv"):
+                        df = pd.read_csv("userData.csv")
 
-                            if bcrypt.checkpw(clientPassword, hashPassword):
-                                send_txt(notified_socket, "True")
-                                correctPassword = True
-                            else:
-                                send_txt(notified_socket, "False")
+                        lst = df.to_dict()
+                        userDict = lst['ID']
+                        hashDict = lst['HASHED_PASSWORD']
+
+                        userValidated = False
+                        for key in userDict:
+                            if not userValidated:
+                                if userDict[key] == clientUser:
+                                    userValidated = True
+                                    print("Usuário encontrado na base de dados, validando senha (...)")
+                                    hashPassword = hashDict[key]
+                                    hashPassword = hashPassword[2:(len(hashPassword) - 1)]
+                                    hashPassword = hashPassword.encode()
+
+                                    if bcrypt.checkpw(clientPassword, hashPassword):
+                                        send_txt(notified_socket, "True")
+                                        print("Senha válida")
+                                        correctPassword = True
+                                    else:
+                                        send_txt(notified_socket, "False")
+                                        print("Senha inválida")
+                                        print(userValidated)
+
+                                elif not userValidated and key+1 == len(userDict):
+                                    print("Usuário não encontrado")
+                                    print(userValidated)
+                                    send_txt(notified_socket, "False")
+
+                    else:
+                        print("Arquivo CSV contendo senhas não encontrado")
+                        send_txt(notified_socket, "False")
                 else:
-                    print("Arquivo CSV contendo senhas não encontrado")
                     send_txt(notified_socket, "False")
 
             clientWeight = int(receive_txt(notified_socket))
