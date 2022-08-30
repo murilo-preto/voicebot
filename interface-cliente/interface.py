@@ -53,7 +53,8 @@ def voice2txt():
             said = r.recognize_google(audio, language="pt-BR")
             print("Foi dito: " + said)
             return said
-    except:
+    except Exception as e:
+        print(e)
         return False
 
 
@@ -243,8 +244,10 @@ class anamnesePage(tk.Frame):
                                 playsound(NOME_ARQUIVO)
                                 os.remove(NOME_ARQUIVO)
 
-                                if False:
+                                if True:
+                                    resposta_usuario = False
                                     while resposta_usuario == False:
+                                        print("Carregando Voice to text")
                                         resposta_usuario = voice2txt()  # Ouvir usuario
                                 else:
                                     resposta_usuario = input("Resposta = ")
