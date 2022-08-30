@@ -9,7 +9,7 @@ import os.path
 
 
 # Iniciar constantes
-SERVER_HOST = "localhost"
+SERVER_HOST = "192.168.0.10"
 SERVER_PORT = 5005
 SEPARADOR = "<SEPARATOR>"  # Separador de texto auxiliar
 TAMANHO_BUFFER = 4096  # Qtd de bytes a serem recebidos por scan
@@ -63,8 +63,11 @@ def send_audio_indexed(client_socket, caminhoAudio):
     send_txt(client_socket, infoArquivo)
 
     with open(caminhoAudio, "rb") as f:
-        bytesLidos = f.read(os.path.getsize(caminhoAudio))  # Ler Bytes
-        client_socket.send(bytesLidos)  # Enviar Bytes lidos
+        while True:
+            bytesLidos = f.read(TAMANHO_BUFFER)  # Ler Bytes
+            if not bytesLidos:
+                break
+            client_socket.sendall(bytesLidos)  # Enviar Bytes lidos
 
 
 def process_txt(texto):

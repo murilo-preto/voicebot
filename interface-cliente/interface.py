@@ -10,7 +10,7 @@ import textwrap
 
 
 # Constantes
-SERVER_IP = "localhost"
+SERVER_IP = "192.168.0.10"
 SERVER_PORT = 5005
 SEPARADOR = "<SEPARATOR>"  # Separador de texto auxiliar
 TAMANHO_BUFFER = 4096  # Qtd de bytes a serem enviados por scan
@@ -229,9 +229,14 @@ class anamnesePage(tk.Frame):
                             anamneseTitle["text"] = texto
 
                         elif tipoArquivo == "audio":
+                            byteCount = 0
                             with open(NOME_ARQUIVO, "wb") as f:  # Baixar audio encapsulado
-                                bytesLidos = client_socket.recv(tamanhoArquivo)
-                                f.write(bytesLidos)
+                                while tamanhoArquivo>byteCount:
+                                    bytesLidos = client_socket.recv(TAMANHO_BUFFER)
+                                    byteCount += len(bytesLidos)
+                                    f.write(bytesLidos)
+
+                                    print(bytesLidos)
 
                             playsound(NOME_ARQUIVO)
                             print("Audio reproduzido")
