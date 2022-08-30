@@ -232,9 +232,13 @@ class anamnesePage(tk.Frame):
                             byteCount = 0
                             with open(NOME_ARQUIVO, "wb") as f:  # Baixar audio encapsulado
                                 while tamanhoArquivo>byteCount:
-                                    bytesLidos = client_socket.recv(TAMANHO_BUFFER)
-                                    byteCount += len(bytesLidos)
-                                    f.write(bytesLidos)
+                                    print("inside loop")
+                                    try:
+                                        bytesLidos = client_socket.recv(TAMANHO_BUFFER)
+                                        byteCount += TAMANHO_BUFFER
+                                        f.write(bytesLidos)
+                                    except:
+                                        break
 
                                     print(bytesLidos)
 
