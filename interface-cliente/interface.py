@@ -7,6 +7,7 @@ import speech_recognition as sr
 from playsound import playsound
 import os
 import textwrap
+from gtts import gTTS
 
 
 # Constantes
@@ -21,8 +22,9 @@ HEADER_LEN = 10  # Tamanho header da msg
 # Def
 def send_txt(txt):
     if isinstance(txt, str):
-        msg = f"{len(txt):<{HEADER_LEN}}" + txt
-        client_socket.send(msg.encode())
+        txtEncoded = txt.encode('utf-8')
+        msg = f"{len(txtEncoded):<{HEADER_LEN}}" + txt
+        client_socket.send(msg.encode('utf-8'))
 
 
 def send_txt_indexado(texto):
@@ -34,9 +36,9 @@ def send_txt_indexado(texto):
 
 def receive_txt(client_socket):
     try:
-        tamanhotxt = client_socket.recv(HEADER_LEN).decode()
+        tamanhotxt = client_socket.recv(HEADER_LEN).decode('utf-8')
         tamanhotxt = int(tamanhotxt.strip())
-        txt = client_socket.recv(tamanhotxt).decode()
+        txt = client_socket.recv(tamanhotxt).decode('utf-8')
         return txt
     except:
         return False
@@ -135,6 +137,8 @@ class loginPage(tk.Frame):  # Página inicial
 
         def validateLogin():
             if (len(passwordEntry.get()) != 0 and len(userEntry.get()) != 0):
+                loginTitle['text'] = "Confirmando dados\ncom o servidor (...)"
+                sendLogin['state'] = tk.DISABLED
                 send_txt(userEntry.get())
                 send_txt(passwordEntry.get())
 
@@ -150,6 +154,7 @@ class loginPage(tk.Frame):  # Página inicial
                     controller.show_frame(insertInfoPage)
                 else:
                     loginTitle['text'] = "Acesso negado.\nConfira os dados digitados."
+                    sendLogin['state'] = tk.ACTIVE
 
         loginTitle = ttk.Label(self,
                           text='Digite suas credenciais\nnos campos indicados abaixo:',
@@ -225,34 +230,27 @@ class anamnesePage(tk.Frame):
 
                         if tipoArquivo == "texto":
                             texto = receive_txt(client_socket)  # Receber texto
-                            texto = wrap_txt(texto)
-                            anamneseTitle["text"] = texto
+                            wrappedTexto = wrap_txt(texto)
+                            anamneseTitle["text"] = wrappedTexto
 
-                        elif tipoArquivo == "audio":
-                            byteCount = 0
-                            with open(NOME_ARQUIVO, "wb") as f:  # Baixar audio encapsulado
-                                while tamanhoArquivo>byteCount:
-                                    print("inside loop")
-                                    try:
-                                        bytesLidos = client_socket.recv(TAMANHO_BUFFER)
-                                        byteCount += TAMANHO_BUFFER
-                                        f.write(bytesLidos)
-                                    except:
-                                        break
-
-                                    print(bytesLidos)
-
-                            playsound(NOME_ARQUIVO)
-                            print("Audio reproduzido")
-                            os.remove(NOME_ARQUIVO)
-
-                            if False:
-                                while resposta_usuario != False:
-                                    resposta_usuario = voice2txt()  # Ouvir usuario
+                            if texto.strip(" ") == "fim de conexão":
+                                break
+                            elif texto.strip(" ") == "Ok, obrigada. Até logo!":
+                                break
                             else:
-                                resposta_usuario = "sim"
+                                tts = gTTS(text=texto, lang='pt-br')
+                                tts.save(NOME_ARQUIVO)
+                                playsound(NOME_ARQUIVO)
+                                os.remove(NOME_ARQUIVO)
 
-                            send_txt_indexado(resposta_usuario)
+                                if False:
+                                    while resposta_usuario == False:
+                                        resposta_usuario = voice2txt()  # Ouvir usuario
+                                else:
+                                    resposta_usuario = input("Resposta = ")
+
+                                send_txt_indexado(resposta_usuario)
+            controller.show_frame(endingPage)
 
         anamneseTitle = ttk.Label(self,
                           text='Por favor, aperte o botão abaixo\npara consultarmos mais algumas informações',
@@ -263,7 +261,7 @@ class anamnesePage(tk.Frame):
 
         anamneseThreading = lambda: threading.Thread(target=anamnese).start()
 
-        anamneseButton = ttk.Button(self, text="Continuar", command= anamneseThreading, width=20)
+        anamneseButton = ttk.Button(self, text="Continuar", command=anamneseThreading, width=20)
         anamneseButton.pack(padx=(10, 10), pady=(10, 30))
 
 

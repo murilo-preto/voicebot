@@ -1,7 +1,5 @@
 import socket
 import select
-from gtts import gTTS
-import os
 import aiml
 import bcrypt
 import pandas as pd
@@ -29,45 +27,27 @@ def writelog (logpath=NOME_LOG, text=""):
 
 def receive_txt(client_socket):  # Receber texto, cliente que o envia como argumento
     try:
-        tamanhotxt = client_socket.recv(HEADER_LEN).decode()
+        tamanhotxt = client_socket.recv(HEADER_LEN).decode('utf-8')
         tamanhotxt = int(tamanhotxt.strip())
-        txt = client_socket.recv(tamanhotxt).decode()
+        txt = client_socket.recv(tamanhotxt).decode('utf-8')
         return txt
     except:
         return False
 
 
 def send_txt(client_socket, txt):
-    msg = f"{len(txt)+10:<{HEADER_LEN}}" + txt
-    client_socket.send(msg.encode())
+    txtEncoded = txt.encode('utf-8')
+    msg = f"{len(txtEncoded):<{HEADER_LEN}}" + txt
+    client_socket.send(msg.encode('utf-8'))
 
 
 def send_txt_indexed(client_socket, texto):
-    infoArquivo = f"texto{SEPARADOR}{len(texto)+10}"
+    texto += "          "
+    infoArquivo = f"texto{SEPARADOR}{len(texto)}"
     send_txt(client_socket, infoArquivo)
     send_txt(client_socket, texto)
 
     writelog(text=f"texto enviado: {texto}")
-
-
-def send_audio_response(client_socket, response):
-    tts = gTTS(text=response, lang='pt-br')
-    filename = f'tempname.mp3'
-    tts.save(filename)
-    send_audio_indexed(client_socket, filename)
-    os.remove(filename)
-
-
-def send_audio_indexed(client_socket, caminhoAudio):
-    infoArquivo = f"audio{SEPARADOR}{os.path.getsize(caminhoAudio)}"
-    send_txt(client_socket, infoArquivo)
-
-    with open(caminhoAudio, "rb") as f:
-        while True:
-            bytesLidos = f.read(TAMANHO_BUFFER)  # Ler Bytes
-            if not bytesLidos:
-                break
-            client_socket.sendall(bytesLidos)  # Enviar Bytes lidos
 
 
 def process_txt(texto):
@@ -177,11 +157,13 @@ while True:
                     response = ai.respond(said)
 
                     send_txt_indexed(notified_socket, response)
-                    send_audio_response(client_socket=notified_socket, response=response)
 
-                    while texto != "Até logo":
+                    while response != "Ok, obrigada. Até logo!":
                         infoArquivo = receive_txt(notified_socket)
-                        texto = process_txt(infoArquivo)
+                        texto = process_txt(infoArquivo).lower()
+                        if texto == "até logo":
+                            send_txt_indexed(notified_socket, "fim de conexão")
+                            break
                         if texto != False:
                             try:
                                 response = ai.respond(texto)
@@ -189,7 +171,6 @@ while True:
                                 response = "Desculpe, mas não consegui captar o que você disse..."
 
                             send_txt_indexed(notified_socket, response)
-                            send_audio_response(notified_socket, response)
 
             lista_soquetes.remove(notified_socket)
             notified_socket.close()
