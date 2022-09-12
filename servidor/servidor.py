@@ -43,7 +43,8 @@ def send_txt(client_socket, txt):
 
 
 def send_txt_indexed(client_socket, texto, serverIP):
-    infoArquivo = f"texto{SEPARADOR}{len(texto)}"
+    txtEncoded = texto.encode('utf-8')
+    infoArquivo = f"texto{SEPARADOR}{len(txtEncoded)}"
     send_txt(client_socket, infoArquivo)
     send_txt(client_socket, texto)
 

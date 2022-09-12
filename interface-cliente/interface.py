@@ -29,7 +29,8 @@ def send_txt(txt):
 
 def send_txt_indexado(texto):
     if isinstance(texto, str):
-        infoArquivo = f"texto{SEPARADOR}{len(texto)}"
+        txtEncoded = texto.encode('utf-8')
+        infoArquivo = f"texto{SEPARADOR}{len(txtEncoded)}"
         send_txt(infoArquivo)
         send_txt(texto)
 
