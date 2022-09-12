@@ -7,7 +7,8 @@ import os.path
 
 
 # Iniciar constantes
-SERVER_HOST = "192.168.0.10"
+hostname = socket.gethostname()
+ipAddress = socket.gethostbyname(hostname)
 SERVER_PORT = 5005
 SEPARADOR = "<SEPARATOR>"  # Separador de texto auxiliar
 TAMANHO_BUFFER = 4096  # Qtd de bytes a serem recebidos por scan
@@ -41,16 +42,15 @@ def send_txt(client_socket, txt):
     client_socket.send(msg.encode('utf-8'))
 
 
-def send_txt_indexed(client_socket, texto):
-    texto += "          "
+def send_txt_indexed(client_socket, texto, serverIP):
     infoArquivo = f"texto{SEPARADOR}{len(texto)}"
     send_txt(client_socket, infoArquivo)
     send_txt(client_socket, texto)
 
-    writelog(text=f"texto enviado: {texto}")
+    writelog(text=f"Servidor ({serverIP}): {texto}")
 
 
-def process_txt(texto):
+def process_txt(texto, clienteIP):
     if texto is False:  # recebertxt retornou falso: cliente fechou conexao
         return False
     else:  # indice recebido valido
@@ -58,7 +58,7 @@ def process_txt(texto):
 
         if tipoArquivo == "texto":
             texto = receive_txt(notified_socket)  # Receber texto
-            writelog(text=f"texto recebido: {texto}")
+            writelog(text=f"Cliente ({clienteIP}): {texto}")
             return texto
 
 
@@ -71,12 +71,12 @@ with open("log.txt", 'w') as f:  # limpa o log de texto
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server_socket.bind((SERVER_HOST, SERVER_PORT))
+server_socket.bind((ipAddress, SERVER_PORT))
 
 lista_soquetes = [server_socket]  # Lista de todos soquetes conectados
 
 server_socket.listen(5)  # Quantidade de clientes que entram em espera
-print(f"[*] Esperando conexoes em {SERVER_HOST}:{SERVER_PORT}")
+print(f"[*] Esperando conexoes em {ipAddress}:{SERVER_PORT}")
 
 while True:
     r_list, w_list, x_list = select.select(lista_soquetes, [], lista_soquetes)
@@ -84,18 +84,17 @@ while True:
     for notified_socket in r_list:
         if notified_socket == server_socket:  # Nova conexao pendente
             notified_socket, endereco = server_socket.accept()
-            print(f"[+] {endereco} foi conectado")
+            clienteIP = endereco[0]
+            print(f"[{clienteIP}] foi conectado")
             lista_soquetes.append(notified_socket)
         else:  # Nao ha conexoes novas pendentes
-            print("[+] Recebendo dados:", notified_socket)
-
             correctPassword = False
             while not correctPassword:
                 clientUser = receive_txt(notified_socket)
-                clientPassword = receive_txt(notified_socket)
+                print(f"[{clienteIP}] Usuário  = {clientUser}")
 
-                print(f"user = {clientUser}")
-                print(f"password = {clientPassword}")
+                clientPassword = receive_txt(notified_socket)
+                print(f"[{clienteIP}] Senha recebida")
 
                 if clientUser != False and clientPassword != False:
                     clientPassword = clientPassword.encode()
@@ -112,23 +111,21 @@ while True:
                             if not userValidated:
                                 if userDict[key] == clientUser:
                                     userValidated = True
-                                    print("Usuário encontrado na base de dados, validando senha (...)")
+                                    print(f"[{clienteIP}] Usuário encontrado na base de dados, validando senha")
                                     hashPassword = hashDict[key]
                                     hashPassword = hashPassword[2:(len(hashPassword) - 1)]
                                     hashPassword = hashPassword.encode()
 
                                     if bcrypt.checkpw(clientPassword, hashPassword):
                                         send_txt(notified_socket, "True")
-                                        print("Senha válida")
+                                        print(f"[{clienteIP}] Senha válida")
                                         correctPassword = True
                                     else:
                                         send_txt(notified_socket, "False")
-                                        print("Senha inválida")
-                                        print(userValidated)
+                                        print(f"[{clienteIP}] Senha inválida")
 
                                 elif not userValidated and key+1 == len(userDict):
-                                    print("Usuário não encontrado")
-                                    print(userValidated)
+                                    print(f"[{clienteIP}] Usuário não encontrado")
                                     send_txt(notified_socket, "False")
 
                     else:
@@ -138,39 +135,42 @@ while True:
                     send_txt(notified_socket, "False")
 
             clientWeight = int(receive_txt(notified_socket))
-            print(clientWeight)
+            print(f"[{clienteIP}] Peso = {clientWeight}")
 
             anamnese = False
 
-            if clientWeight == 1:
+            if clientWeight == 120:
                 send_txt(notified_socket, "True")
                 anamnese = True
             else:
                 send_txt(notified_socket, "False")
 
             if anamnese:
-                infoArquivo = receive_txt(notified_socket)
-                texto = process_txt(infoArquivo)
-                if texto != False:
-                    name = texto
-                    said = "ROBOTSTART " + name
-                    response = ai.respond(said)
+                name = "Roberto"  # Adicionar nome CSV
+                said = "ROBOTSTART " + name
+                response = ai.respond(said)
 
-                    send_txt_indexed(notified_socket, response)
+                send_txt_indexed(client_socket=notified_socket, texto=response, serverIP=ipAddress)
 
-                    while response != "Ok, obrigada. Até logo!":
-                        infoArquivo = receive_txt(notified_socket)
-                        texto = process_txt(infoArquivo).lower()
-                        if texto == "até logo":
-                            send_txt_indexed(notified_socket, "fim de conexão")
-                            break
-                        if texto != False:
-                            try:
-                                response = ai.respond(texto)
-                            except:
-                                response = "Desculpe, mas não consegui captar o que você disse..."
+                while response != "Ok, obrigada. Até logo!":
+                    infoArquivo = receive_txt(notified_socket)
+                    texto = process_txt(texto=infoArquivo, clienteIP=clienteIP)
 
-                            send_txt_indexed(notified_socket, response)
+                    if texto != False:
+                        texto = texto.lower()
+
+                    if texto == "até logo":
+                        send_txt_indexed(client_socket=notified_socket, texto="fim de conexão", serverIP=ipAddress)
+                        break
+
+                    if texto != False:
+                        try:
+                            response = ai.respond(texto)
+                        except:
+                            response = "Desculpe, mas não consegui captar o que você disse..."
+
+                        send_txt_indexed(client_socket=notified_socket, texto=response, serverIP=ipAddress)
+                    else:
+                        break
 
             lista_soquetes.remove(notified_socket)
-            notified_socket.close()

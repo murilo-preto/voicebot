@@ -11,7 +11,7 @@ from gtts import gTTS
 
 
 # Constantes
-SERVER_IP = "192.168.0.10"
+SERVER_IP = "192.168.0.9"
 SERVER_PORT = 5005
 SEPARADOR = "<SEPARATOR>"  # Separador de texto auxiliar
 TAMANHO_BUFFER = 4096  # Qtd de bytes a serem enviados por scan
@@ -220,39 +220,36 @@ class anamnesePage(tk.Frame):
 
         def anamnese():
             anamneseButton['state'] = tk.DISABLED
-            resposta_usuario = "Murilo"
-            send_txt_indexado(resposta_usuario)  # Enviar o que foi ouvido ao servidor
             while True:
-                if resposta_usuario != False:
-                    infoArquivo = receive_txt(client_socket)  # Receber resposta do servidor
-                    if infoArquivo != False:
-                        tipoArquivo, tamanhoArquivo = infoArquivo.split(SEPARADOR)
-                        tamanhoArquivo = int(tamanhoArquivo)
+                infoArquivo = receive_txt(client_socket)  # Receber resposta do servidor
+                if infoArquivo != False:
+                    tipoArquivo, tamanhoArquivo = infoArquivo.split(SEPARADOR)
+                    tamanhoArquivo = int(tamanhoArquivo)
 
-                        if tipoArquivo == "texto":
-                            texto = receive_txt(client_socket)  # Receber texto
-                            wrappedTexto = wrap_txt(texto)
-                            anamneseTitle["text"] = wrappedTexto
+                    if tipoArquivo == "texto":
+                        texto = receive_txt(client_socket)  # Receber texto
+                        wrappedTexto = wrap_txt(texto)
+                        anamneseTitle["text"] = wrappedTexto
 
-                            if texto.strip(" ") == "fim de conexão":
-                                break
-                            elif texto.strip(" ") == "Ok, obrigada. Até logo!":
-                                break
+                        if texto.strip(" ") == "fim de conexão":
+                            break
+                        elif texto.strip(" ") == "Ok, obrigada. Até logo!":
+                            break
+                        else:
+                            tts = gTTS(text=texto, lang='pt-br')
+                            tts.save(NOME_ARQUIVO)
+                            playsound(NOME_ARQUIVO)
+                            os.remove(NOME_ARQUIVO)
+
+                            if False:
+                                resposta_usuario = False
+                                while resposta_usuario == False:
+                                    print("Carregando Voice to text")
+                                    resposta_usuario = voice2txt()  # Ouvir usuario
                             else:
-                                tts = gTTS(text=texto, lang='pt-br')
-                                tts.save(NOME_ARQUIVO)
-                                playsound(NOME_ARQUIVO)
-                                os.remove(NOME_ARQUIVO)
+                                resposta_usuario = input("Resposta = ")
 
-                                if True:
-                                    resposta_usuario = False
-                                    while resposta_usuario == False:
-                                        print("Carregando Voice to text")
-                                        resposta_usuario = voice2txt()  # Ouvir usuario
-                                else:
-                                    resposta_usuario = input("Resposta = ")
-
-                                send_txt_indexado(resposta_usuario)
+                            send_txt_indexado(resposta_usuario)
             controller.show_frame(endingPage)
 
         anamneseTitle = ttk.Label(self,
