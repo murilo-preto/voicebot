@@ -11,7 +11,7 @@ from gtts import gTTS
 
 
 # Constantes
-SERVER_IP = "192.168.0.9"
+SERVER_IP = "100.126.20.72"
 SERVER_PORT = 5005
 SEPARADOR = "<SEPARATOR>"  # Separador de texto auxiliar
 TAMANHO_BUFFER = 4096  # Qtd de bytes a serem enviados por scan
@@ -254,7 +254,7 @@ class anamnesePage(tk.Frame):
             controller.show_frame(endingPage)
 
         anamneseTitle = ttk.Label(self,
-                          text='Por favor, aperte o botão abaixo\npara consultarmos mais algumas informações',
+                          text='Alerta gerado, estamos te ligando para\nconsultarmos mais algumas informações.\nAperte o botão abaixo para atender.',
                           font=LARGE_FONT,
                           justify=tk.CENTER)
 
@@ -262,7 +262,7 @@ class anamnesePage(tk.Frame):
 
         anamneseThreading = lambda: threading.Thread(target=anamnese).start()
 
-        anamneseButton = ttk.Button(self, text="Continuar", command=anamneseThreading, width=20)
+        anamneseButton = ttk.Button(self, text="Atender", command=anamneseThreading, width=20)
         anamneseButton.pack(padx=(10, 10), pady=(10, 30))
 
 
